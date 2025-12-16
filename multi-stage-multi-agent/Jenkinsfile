@@ -7,6 +7,7 @@ pipeline {
       }
       steps {
         sh '''
+          dir('multi-stage-multi-agent/backend')
           mvn clean compile
           java -cp target/classes HelloWorld
         '''
