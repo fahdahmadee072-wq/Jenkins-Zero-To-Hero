@@ -1,0 +1,24 @@
+- name: Deploy HelloWorld app
+  hosts: app
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Java
+      apt:
+        name: openjdk-11-jdk
+        state: present
+
+    - name: Create application directory
+      file:
+        path: /opt/hello
+        state: directory
+        mode: '0755'
+
+    - name: Create deployment marker file
+      copy:
+        content: "Deployed via Jenkins + Ansible\n"
+        dest: /opt/hello/deployed.txt
