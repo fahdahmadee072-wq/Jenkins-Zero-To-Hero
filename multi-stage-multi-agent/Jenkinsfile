@@ -6,13 +6,13 @@ pipeline {
         docker { image 'maven:3.8.1-adoptopenjdk-11' }
       }
       steps {
-        sh '''
-          dir('multi-stage-multi-agent/backend')
-          mvn clean compile
-          java -cp target/classes HelloWorld
-        '''
+        dir('multi-stage-multi-agent/backend')
+          sh '''
+            mvn clean compile
+            java -cp target/classes HelloWorld
+          '''
+        }
       }
-    }
     stage('Front-end') {
       agent {
         docker { image 'node:16-alpine' }
