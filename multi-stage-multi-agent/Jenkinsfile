@@ -2,12 +2,13 @@ pipeline {
   agent none
 
   stages {
+
     stage('Back-end (CI)') {
       agent {
         docker { image 'maven:3.8.1-adoptopenjdk-11' }
       }
       steps {
-        dir('backend') {
+        dir('multi-stage-multi-agent/backend') {
           sh '''
             mvn clean compile
             java -cp target/classes HelloWorld
@@ -35,9 +36,7 @@ pipeline {
         }
       }
     }
-  }
-}
-
 
   }
 }
+:
