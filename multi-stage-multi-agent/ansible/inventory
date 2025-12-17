@@ -1,2 +1,2 @@
 [app]
-34.133.174.87 ansible_user=fahda 
+34.133.174.87 ansible_user=fahda ansible_ssh_private_key_file=~/.ssh/id_rsa
