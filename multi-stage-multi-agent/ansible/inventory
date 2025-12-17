@@ -1,2 +1,2 @@
 [app]
-34.133.174.87 ansible_user=fahda ansible-ssh-private-key-file=/var/lib/jenkins/.ssh/id_rsa
+34.133.174.87 ansible_user=fahda 
