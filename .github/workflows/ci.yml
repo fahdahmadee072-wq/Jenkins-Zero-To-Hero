@@ -37,3 +37,30 @@ jobs:
 
       - name: Check Node version
         run: node --version
+  deploy:
+    name: Deploy (CD)
+    needs: backend-ci     # waits for CI
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+  
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+  
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H <VM_PUBLIC_IP> >> ~/.ssh/known_hosts
+  
+      - name: Deploy using Ansible
+        working-directory: multi-stage-multi-agent
+        run: |
+          ansible-playbook -i ansible/inventory ansible/deploy.yml
+          
+          
