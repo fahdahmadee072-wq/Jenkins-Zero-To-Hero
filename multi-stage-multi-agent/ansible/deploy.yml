@@ -1,4 +1,4 @@
-- name: Deploy HelloWorld app (Versioned with current symlink)
+- name: Deploy HelloWorld app (Versioned + Health Check)
   hosts: app
   become: yes
 
@@ -49,7 +49,24 @@
         state: link
         force: yes
 
-    - name: Create deployment marker file
-      copy:
-        content: "Release {{ release_id }} deployed via GitHub Actions\n"
-        dest: "{{ release_path }}/deployed.txt"
+    # 🔍 HEALTH CHECK STARTS HERE
+
+    - name: Check that current deployment marker exists
+      stat:
+        path: "{{ current_path }}/deployed.txt"
+      register: deployment_file
+
+    - name: Fail if deployment marker is missing
+      fail:
+        msg: "Health check failed: deployed.txt not found in current release"
+      when: not deployment_file.stat.exists
+
+    - name: Verify deployed release ID
+      shell: cat {{ current_path }}/deployed.txt
+      register: deployed_content
+
+    - name: Fail if release ID does not match
+      fail:
+        msg: "Health check failed: current release does not match deployed release"
+      when: release_id not in deployed_content.stdout
+
