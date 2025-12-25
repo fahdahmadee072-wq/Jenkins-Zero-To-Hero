@@ -1,10 +1,11 @@
-- name: Deploy HelloWorld app (Versioned)
+- name: Deploy HelloWorld app (Versioned with current symlink)
   hosts: app
   become: yes
 
   vars:
     app_base: /opt/hello
     releases_dir: "{{ app_base }}/releases"
+    current_path: "{{ app_base }}/current"
     release_id: "{{ lookup('env', 'GITHUB_RUN_ID') | default(lookup('pipe', 'date +%Y%m%d%H%M%S'), true) }}"
     release_path: "{{ releases_dir }}/{{ release_id }}"
 
@@ -18,13 +19,13 @@
         name: openjdk-11-jdk
         state: present
 
-    - name: Create base application directory
+    - name: Ensure base application directory exists
       file:
         path: "{{ app_base }}"
         state: directory
         mode: '0755'
 
-    - name: Create releases directory
+    - name: Ensure releases directory exists
       file:
         path: "{{ releases_dir }}"
         state: directory
@@ -35,6 +36,18 @@
         path: "{{ release_path }}"
         state: directory
         mode: '0755'
+
+    - name: Create deployment marker file
+      copy:
+        content: "Release {{ release_id }} deployed via GitHub Actions\n"
+        dest: "{{ release_path }}/deployed.txt"
+
+    - name: Update current symlink to new release
+      file:
+        src: "{{ release_path }}"
+        dest: "{{ current_path }}"
+        state: link
+        force: yes
 
     - name: Create deployment marker file
       copy:
