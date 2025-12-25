@@ -1,66 +1,25 @@
-name: CI Pipeline
+deploy:
+  name: Deploy (CD)
+  needs: backend-ci
+  runs-on: ubuntu-latest
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
+    - name: Install Ansible
+      run: |
+        sudo apt update
+        sudo apt install -y ansible
 
-jobs:
-  backend-ci:
-    runs-on: ubuntu-latest
-    container:
-      image: maven:3.8.1-adoptopenjdk-11
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.AZURE_SSH_KEY }}" > ~/.ssh/azure-cd
+        chmod 600 ~/.ssh/azure-cd
+        ssh-keyscan -H <AZURE_PUBLIC_IP> >> ~/.ssh/known_hosts
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Build backend
-        working-directory: multi-stage-multi-agent/backend
-        run: mvn clean compile
-
-      - name: Run HelloWorld
-        working-directory: multi-stage-multi-agent/backend
-        run: java -cp target/classes HelloWorld
-
-
-  frontend-ci:
-    runs-on: ubuntu-latest
-    container:
-      image: node:16-alpine
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check Node version
-        run: node --version
-  deploy:
-    name: Deploy (CD)
-    needs: backend-ci     # waits for CI
-    runs-on: ubuntu-latest
-  
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-  
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
-  
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H 34.133.174.87 >> ~/.ssh/known_hosts
-  
-      - name: Deploy using Ansible
-        working-directory: multi-stage-multi-agent
-        run: |
-          ansible-playbook -i ansible/inventory ansible/deploy.yml
-          
-          
+    - name: Deploy using Ansible
+      working-directory: multi-stage-multi-agent
+      run: |
+        ansible-playbook -i ansible/inventory ansible/deploy.yml
