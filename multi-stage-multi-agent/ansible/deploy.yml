@@ -1,6 +1,12 @@
-- name: Deploy HelloWorld app
+- name: Deploy HelloWorld app (Versioned)
   hosts: app
   become: yes
+
+  vars:
+    app_base: /opt/hello
+    releases_dir: "{{ app_base }}/releases"
+    release_id: "{{ lookup('env', 'GITHUB_RUN_ID') | default(lookup('pipe', 'date +%Y%m%d%H%M%S'), true) }}"
+    release_path: "{{ releases_dir }}/{{ release_id }}"
 
   tasks:
     - name: Update apt cache
@@ -12,13 +18,25 @@
         name: openjdk-11-jdk
         state: present
 
-    - name: Create application directory
+    - name: Create base application directory
       file:
-        path: /opt/hello
+        path: "{{ app_base }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create releases directory
+      file:
+        path: "{{ releases_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create release directory
+      file:
+        path: "{{ release_path }}"
         state: directory
         mode: '0755'
 
     - name: Create deployment marker file
       copy:
-        content: "Deployed via Jenkins + Ansible\n"
-        dest: /opt/hello/deployed.txt
+        content: "Release {{ release_id }} deployed via GitHub Actions\n"
+        dest: "{{ release_path }}/deployed.txt"
