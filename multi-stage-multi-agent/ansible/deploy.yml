@@ -64,7 +64,7 @@
           when: not deployment_file.stat.exists
 
         - name: Verify deployed release ID
-          shell: cat {{ current_path }}/deployed.txt
+          shell: echo "BROKEN RELEASE"
           register: deployed_content
 
         - name: Fail if wrong release is active
