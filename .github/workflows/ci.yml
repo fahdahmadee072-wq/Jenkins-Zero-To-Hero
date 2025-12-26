@@ -6,7 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-
 jobs:
   backend-ci:
     runs-on: ubuntu-latest
@@ -17,13 +16,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build backend
-        working-directory: multi-stage-multi-agent/backend
-        run: mvn clean compile
+      - name: Build Java application
+        working-directory: cicd/backend
+        run: mvn clean package
 
-      - name: Run HelloWorld
-        working-directory: multi-stage-multi-agent/backend
-        run: java -cp target/classes HelloWorld
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: java-app
+          path: cicd/backend/target/*.jar
 
 
   frontend-ci:
@@ -37,28 +38,40 @@ jobs:
 
       - name: Check Node version
         run: node --version
+
+
   deploy:
     name: Deploy (CD)
-    needs: backend-ci     # waits for CI
+    needs: backend-ci
     runs-on: ubuntu-latest
-  
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-  
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: java-app
+          path: artifacts
+
       - name: Install Ansible
         run: |
           sudo apt update
           sudo apt install -y ansible
-  
+
       - name: Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.AZURE_CD }}" > ~/.ssh/azure-cd
           chmod 600 ~/.ssh/azure-cd
           ssh-keyscan -H 172.184.234.149 >> ~/.ssh/known_hosts
-  
+
       - name: Deploy using Ansible
         working-directory: multi-stage-multi-agent
+        env:
+          APP_JAR: ../artifacts
         run: |
+          ansible-playbook -i ansible/inventory ansible/deploy.yml
+
           ansible-playbook -i ansible/inventory ansible/deploy.yml
