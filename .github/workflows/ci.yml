@@ -60,13 +60,19 @@ jobs:
           sudo apt update
           sudo apt install -y ansible
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          printf "%s\n" "${{ secrets.AZURE_CD }}" > ~/.ssh/azure-cd
-          chmod 600 ~/.ssh/azure-cd
-          ssh-keyscan -H 172.184.234.149 >> ~/.ssh/known_hosts
-  
+     - name: Setup SSH
+       run: |
+         mkdir -p ~/.ssh
+         printf "%s\n" "${{ secrets.AZURE_CD }}" > ~/.ssh/azure-cd
+         chmod 600 ~/.ssh/azure-cd
+    
+         cat <<EOF > ~/.ssh/config
+         Host *
+           StrictHostKeyChecking no
+           UserKnownHostsFile=/dev/null
+           IdentityFile ~/.ssh/azure-cd
+         EOF
+
       - name: Deploy using Ansible
         working-directory: multi-stage-multi-agent
         env:
