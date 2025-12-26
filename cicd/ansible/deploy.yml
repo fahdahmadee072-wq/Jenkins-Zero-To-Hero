@@ -1,4 +1,4 @@
-- name: Deploy HelloWorld app (Production-grade CD)
+- name: Deploy Java HTTP Service (Production-grade CD)
   hosts: app
   become: yes
 
@@ -6,11 +6,22 @@
     app_base: /opt/hello
     releases_dir: "{{ app_base }}/releases"
     current_path: "{{ app_base }}/current"
-    release_id: "{{ lookup('env', 'GITHUB_RUN_ID') | default(lookup('pipe', 'date +%Y%m%d%H%M%S'), true) }}"
+    app_user: fahda
+    app_port: 8080
+
+    release_id: "{{ lookup('env', 'GITHUB_RUN_ID') | default(lookup('pipe','date +%Y%m%d%H%M%S'), true) }}"
     release_path: "{{ releases_dir }}/{{ release_id }}"
+    jar_name: simple-http-app-1.0.jar
+    jar_path: "{{ release_path }}/{{ jar_name }}"
+
+    systemd_service: simple-http-app
 
   tasks:
     - block:
+
+        # ---------------------------
+        # BASE SETUP
+        # ---------------------------
 
         - name: Update apt cache
           apt:
@@ -21,66 +32,103 @@
             name: openjdk-11-jdk
             state: present
 
-        - name: Ensure base application directory exists
+        - name: Ensure base directories exist
           file:
-            path: "{{ app_base }}"
+            path: "{{ item }}"
             state: directory
+            owner: "{{ app_user }}"
+            group: "{{ app_user }}"
             mode: '0755'
+          loop:
+            - "{{ app_base }}"
+            - "{{ releases_dir }}"
+            - "{{ release_path }}"
 
-        - name: Ensure releases directory exists
-          file:
-            path: "{{ releases_dir }}"
-            state: directory
-            mode: '0755'
+        # ---------------------------
+        # DEPLOY ARTIFACT
+        # ---------------------------
 
-        - name: Create release directory
-          file:
-            path: "{{ release_path }}"
-            state: directory
-            mode: '0755'
-
-        - name: Create deployment marker file
+        - name: Copy JAR to release directory
           copy:
-            content: "Release {{ release_id }} deployed via GitHub Actions\n"
-            dest: "{{ release_path }}/deployed.txt"
+            src: "{{ lookup('env','GITHUB_WORKSPACE') }}/artifacts/{{ jar_name }}"
+            dest: "{{ jar_path }}"
+            owner: "{{ app_user }}"
+            group: "{{ app_user }}"
+            mode: '0755'
 
-        - name: Update current symlink to new release
+        # ---------------------------
+        # UPDATE CURRENT SYMLINK
+        # ---------------------------
+
+        - name: Update current symlink
           file:
             src: "{{ release_path }}"
             dest: "{{ current_path }}"
             state: link
             force: yes
 
-        # 🔍 HEALTH CHECKS
+        # ---------------------------
+        # SYSTEMD SERVICE
+        # ---------------------------
 
-        - name: Check deployment marker exists
-          stat:
-            path: "{{ current_path }}/deployed.txt"
-          register: deployment_file
+        - name: Create systemd service file
+          copy:
+            dest: "/etc/systemd/system/{{ systemd_service }}.service"
+            content: |
+              [Unit]
+              Description=Simple Java HTTP App
+              After=network.target
 
-        - name: Fail if deployment marker missing
-          fail:
-            msg: "Health check failed: deployed.txt missing"
-          when: not deployment_file.stat.exists
+              [Service]
+              User={{ app_user }}
+              WorkingDirectory={{ current_path }}
+              ExecStart=/usr/bin/java -jar {{ current_path }}/{{ jar_name }}
+              Restart=always
+              RestartSec=5
 
-        - name: Verify deployed release ID
-          shell: cat {{ current_path }}/deployed.txt
-          register: deployed_content
+              [Install]
+              WantedBy=multi-user.target
 
-        - name: Fail if wrong release is active
-          fail:
-            msg: "Health check failed: current does not point to latest release"
-          when: release_id not in deployed_content.stdout
+        - name: Reload systemd
+          command: systemctl daemon-reexec
+
+        - name: Restart application service
+          systemd:
+            name: "{{ systemd_service }}"
+            state: restarted
+            enabled: yes
+
+        # ---------------------------
+        # HEALTH CHECK
+        # ---------------------------
+
+        - name: Wait for application to start
+          wait_for:
+            port: "{{ app_port }}"
+            delay: 5
+            timeout: 30
+
+        - name: HTTP health check
+          uri:
+            url: "http://localhost:{{ app_port }}/health"
+            status_code: 200
+            timeout: 5
 
       rescue:
 
+        # ---------------------------
+        # ROLLBACK
+        # ---------------------------
+
         - name: Roll back to previous release
           shell: |
-            PREV_RELEASE=$(ls -dt {{ releases_dir }}/* | sed -n '2p')
-            if [ -n "$PREV_RELEASE" ]; then
-              ln -sfn "$PREV_RELEASE" "{{ current_path }}"
+            PREV=$(ls -dt {{ releases_dir }}/* | sed -n '2p')
+            if [ -n "$PREV" ]; then
+              ln -sfn "$PREV" "{{ current_path }}"
+              systemctl restart {{ systemd_service }}
             fi
 
         - name: Fail deployment after rollback
           fail:
-            msg: "Deployment failed and was rolled back to previous release"
+            msg: "Deployment failed and rolled back to previous release"
+ck to previous release"
