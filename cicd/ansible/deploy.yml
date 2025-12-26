@@ -9,19 +9,15 @@
     app_user: fahda
     app_port: 8080
 
-    release_id: "{{ lookup('env', 'GITHUB_RUN_ID') | default(lookup('pipe','date +%Y%m%d%H%M%S'), true) }}"
+    release_id: "{{ lookup('env','GITHUB_RUN_ID') | default(lookup('pipe','date +%Y%m%d%H%M%S'), true) }}"
     release_path: "{{ releases_dir }}/{{ release_id }}"
     jar_name: simple-http-app-1.0.jar
     jar_path: "{{ release_path }}/{{ jar_name }}"
 
-    systemd_service: simple-http-app
+    service_name: simple-http-app
 
   tasks:
     - block:
-
-        # ---------------------------
-        # BASE SETUP
-        # ---------------------------
 
         - name: Update apt cache
           apt:
@@ -44,21 +40,13 @@
             - "{{ releases_dir }}"
             - "{{ release_path }}"
 
-        # ---------------------------
-        # DEPLOY ARTIFACT
-        # ---------------------------
-
-        - name: Copy JAR to release directory
+        - name: Copy application JAR
           copy:
             src: "{{ lookup('env','GITHUB_WORKSPACE') }}/artifacts/{{ jar_name }}"
             dest: "{{ jar_path }}"
             owner: "{{ app_user }}"
             group: "{{ app_user }}"
             mode: '0755'
-
-        # ---------------------------
-        # UPDATE CURRENT SYMLINK
-        # ---------------------------
 
         - name: Update current symlink
           file:
@@ -67,13 +55,9 @@
             state: link
             force: yes
 
-        # ---------------------------
-        # SYSTEMD SERVICE
-        # ---------------------------
-
         - name: Create systemd service file
           copy:
-            dest: "/etc/systemd/system/{{ systemd_service }}.service"
+            dest: "/etc/systemd/system/{{ service_name }}.service"
             content: |
               [Unit]
               Description=Simple Java HTTP App
@@ -92,17 +76,13 @@
         - name: Reload systemd
           command: systemctl daemon-reexec
 
-        - name: Restart application service
+        - name: Restart application
           systemd:
-            name: "{{ systemd_service }}"
+            name: "{{ service_name }}"
             state: restarted
             enabled: yes
 
-        # ---------------------------
-        # HEALTH CHECK
-        # ---------------------------
-
-        - name: Wait for application to start
+        - name: Wait for port to be available
           wait_for:
             port: "{{ app_port }}"
             delay: 5
@@ -116,19 +96,15 @@
 
       rescue:
 
-        # ---------------------------
-        # ROLLBACK
-        # ---------------------------
-
         - name: Roll back to previous release
           shell: |
             PREV=$(ls -dt {{ releases_dir }}/* | sed -n '2p')
             if [ -n "$PREV" ]; then
               ln -sfn "$PREV" "{{ current_path }}"
-              systemctl restart {{ systemd_service }}
+              systemctl restart {{ service_name }}
             fi
 
         - name: Fail deployment after rollback
           fail:
-            msg: "Deployment failed and rolled back to previous release"
-ck to previous release"
+            msg: "Deployment failed and was rolled back"
+
