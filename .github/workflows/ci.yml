@@ -74,7 +74,7 @@ jobs:
           EOF
       - name: SSH connectivity test
         run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "hostname && whoami"
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "hostname; whoami"
 
       - name: Deploy using Ansible
         working-directory: cicd
