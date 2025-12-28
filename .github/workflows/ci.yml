@@ -82,4 +82,11 @@ jobs:
         working-directory: cicd
         run: |
           ansible-playbook -i ansible/inventory ansible/deploy.yml
+      - name: Wait for application startup
+        run: sleep 10
+
+      - name: CI/CD health check (release approval)
+        run: |
+          curl -f https://localhost/health
+  
 
