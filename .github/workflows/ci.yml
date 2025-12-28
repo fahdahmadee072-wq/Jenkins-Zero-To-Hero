@@ -72,6 +72,9 @@ jobs:
             UserKnownHostsFile=/dev/null
             IdentityFile ~/.ssh/azure-cd
           EOF
+      - name: SSH connectivity test
+        run: |
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} "hostname && whoami"
 
       - name: Deploy using Ansible
         working-directory: cicd
@@ -87,5 +90,5 @@ jobs:
 
       - name: CI/CD health check (release approval)
         run: |
-          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
           "curl -fk https://localhost/health"
