@@ -92,4 +92,4 @@ jobs:
       - name: CI/CD health check (release approval)
         run: |
           ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
-          curl -fk https://localhost/health
+            curl -4 -fk https://127.0.0.1/health
