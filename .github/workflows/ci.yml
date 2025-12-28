@@ -85,6 +85,4 @@ jobs:
         run: sleep 10
 
       - name: CI/CD health check (release approval)
-        run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
-            /usr/bin/curl -4 -k -f https://127.0.0.1/health
+        run: ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} /usr/bin/curl -4 -k -f https://127.0.0.1/health
