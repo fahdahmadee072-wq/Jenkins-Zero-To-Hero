@@ -91,5 +91,5 @@ jobs:
 
       - name: CI/CD health check (release approval)
         run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} -- \
-            curl -4 -fk https://127.0.0.1/health
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
+            "curl -fk https://127.0.0.1/health"
