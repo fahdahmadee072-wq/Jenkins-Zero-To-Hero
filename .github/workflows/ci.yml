@@ -87,6 +87,9 @@ jobs:
 
       - name: CI/CD health check (release approval)
         run: |
-          curl -f https://localhost/health
+          ssh -o StrictHostKeyChecking=no \
+              ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} \
+              "curl -fk https://localhost/health"
+
   
 
