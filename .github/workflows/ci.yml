@@ -74,8 +74,7 @@ jobs:
           EOF
       - name: SSH connectivity test
         run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
-            " bash -lc 'hostname && whoami'"
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} hostname
 
 
       - name: Deploy using Ansible
@@ -92,5 +91,4 @@ jobs:
 
       - name: CI/CD health check (release approval)
         run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
-          "curl -fk https://localhost/health"
+          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} curl -fk https://localhost/health
