@@ -26,7 +26,6 @@ jobs:
           name: java-app
           path: cicd/backend/target/*.jar
 
-
   frontend-ci:
     runs-on: ubuntu-latest
     container:
@@ -39,10 +38,11 @@ jobs:
       - name: Check Node version
         run: node --version
 
-
   deploy:
     name: Deploy (CD)
-    needs: backend-ci
+    needs:
+      - backend-ci
+      - frontend-ci
     runs-on: ubuntu-latest
 
     steps:
@@ -65,33 +65,26 @@ jobs:
           mkdir -p ~/.ssh
           printf "%s\n" "${{ secrets.AZURE_CD }}" > ~/.ssh/azure-cd
           chmod 600 ~/.ssh/azure-cd
-
           cat <<EOF > ~/.ssh/config
           Host *
             StrictHostKeyChecking no
             UserKnownHostsFile=/dev/null
             IdentityFile ~/.ssh/azure-cd
           EOF
+
       - name: SSH connectivity test
         run: |
           ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} hostname
 
-
       - name: Deploy using Ansible
         working-directory: cicd
         run: |
           ansible-playbook -i ansible/inventory ansible/deploy.yml
 
-      - name: Deploy using Ansible
-        working-directory: cicd
-        run: |
-          ansible-playbook -i ansible/inventory ansible/deploy.yml
       - name: Wait for application startup
         run: sleep 10
 
-     - name: CI/CD health check (release approval)
-       run: |
+      - name: CI/CD health check (release approval)
+        run: |
           ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} \
             /usr/bin/curl -4 -k -f https://127.0.0.1/health
-
-
