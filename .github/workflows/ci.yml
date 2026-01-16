@@ -1,92 +1,66 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
-  backend-ci:
+
+  build-and-push:
     runs-on: ubuntu-latest
-    container:
-      image: maven:3.8.1-adoptopenjdk-11
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Java application
-        working-directory: cicd/backend
-        run: mvn clean package
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Upload JAR artifact
-        uses: actions/upload-artifact@v4
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
         with:
-          name: java-app
-          path: cicd/backend/target/*.jar
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-  frontend-ci:
-    runs-on: ubuntu-latest
-    container:
-      image: node:16-alpine
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Check Node version
-        run: node --version
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/flask-nginx-app:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/flask-nginx-app:${{ github.sha }}
 
   deploy:
-    name: Deploy (CD)
-    needs:
-      - backend-ci
-      - frontend-ci
+    needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: java-app
-          path: artifacts
-
-      - name: Install Ansible
-        run: |
-          sudo apt update
-          sudo apt install -y ansible
-
-      - name: Setup SSH
+      - name: Preparing SSH Key
         run: |
           mkdir -p ~/.ssh
-          printf "%s\n" "${{ secrets.AZURE_CD }}" > ~/.ssh/azure-cd
-          chmod 600 ~/.ssh/azure-cd
-          cat <<EOF > ~/.ssh/config
-          Host *
-            StrictHostKeyChecking no
-            UserKnownHostsFile=/dev/null
-            IdentityFile ~/.ssh/azure-cd
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Deploy to VM
+        run: |
+          ssh -o StrictHostKeyChecking=no -p ${{ secrets.SERVER_SSH_PORT }} \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+
+            cd ~/Jenkins-Zero-To-Hero/nginx-flask-db
+
+            echo "Pulling latest image..."
+            docker compose pull web
+
+            echo "Restarting services..."
+            docker compose up -d --build
+
+            echo "Waiting for app..."
+            sleep 5
+
+            echo "Checking health..."
+            curl -f http://localhost:8081/health || exit 1
+
           EOF
-
-      - name: SSH connectivity test
-        run: |
-          ssh ${{ secrets.AZURE_VM_USER }}@${{ secrets.AZURE_VM_HOST }} hostname
-
-      - name: Deploy using Ansible
-        working-directory: cicd
-        run: |
-          ansible-playbook -i ansible/inventory ansible/deploy.yml
-
-      - name: Wait for application startup
-        run: sleep 10
-
-      - name: CI/CD health check (release approval)
-        working-directory: cicd
-        run: |
-            ansible -i ansible/inventory all \
-              -m uri \
-              -a "url=https://localhost/health validate_certs=no status_code=200"
