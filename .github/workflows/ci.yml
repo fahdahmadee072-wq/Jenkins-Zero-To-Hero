@@ -56,6 +56,17 @@ jobs:
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
 
             cd ~/Jenkins-Zero-To-Hero/nginx-flask-db
+            echo "Creating .env file dynamically..."
+
+            cat <<EOF > .env
+            DB_HOST=db
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASS=${{ secrets.DB_PASS }}
+            EOF
+            
+            echo ".env created:"
+            cat .env
 
             docker compose pull web
             docker compose up -d --build
