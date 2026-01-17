@@ -68,6 +68,14 @@ jobs:
             echo ".env created:"
             cat .env
 
+            # Clean old folder
+            rm -rf ~/app-deploy
+
+            # Clone fresh
+            git clone https://github.com/fahdahmadee072/Jenkins-Zero-To-Hero.git ~/app-deploy
+
+            cd ~/app-deploy/flask-nginx-db
+
             docker compose pull web
             docker compose up -d --build
 
