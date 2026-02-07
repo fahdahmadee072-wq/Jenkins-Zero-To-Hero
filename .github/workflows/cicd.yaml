@@ -27,7 +27,7 @@ jobs:
 
       - name: Build Docker Image
         run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest .
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest ./flask-nginx-db/app
 
       - name: Push Docker Image to ACR
         run: |
