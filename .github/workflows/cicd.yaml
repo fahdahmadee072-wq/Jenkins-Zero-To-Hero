@@ -48,4 +48,3 @@ jobs:
       run: |
         kubectl get pods -n default
         kubectl get svc -n default
-
