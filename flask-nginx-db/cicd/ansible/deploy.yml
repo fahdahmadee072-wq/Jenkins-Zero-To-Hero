@@ -1,0 +1,110 @@
+- name: Deploy Java HTTP Service (Production-grade CD)
+  hosts: app
+  become: yes
+
+  vars:
+    app_base: /opt/hello
+    releases_dir: "{{ app_base }}/releases"
+    current_path: "{{ app_base }}/current"
+    app_user: fahda
+    app_port: 8080
+
+    release_id: "{{ lookup('env','GITHUB_RUN_ID') | default(lookup('pipe','date +%Y%m%d%H%M%S'), true) }}"
+    release_path: "{{ releases_dir }}/{{ release_id }}"
+    jar_name: simple-http-app-1.0.jar
+    jar_path: "{{ release_path }}/{{ jar_name }}"
+
+    service_name: simple-http-app
+
+  tasks:
+    - block:
+
+        - name: Update apt cache
+          apt:
+            update_cache: yes
+
+        - name: Install Java
+          apt:
+            name: openjdk-11-jdk
+            state: present
+
+        - name: Ensure base directories exist
+          file:
+            path: "{{ item }}"
+            state: directory
+            owner: "{{ app_user }}"
+            group: "{{ app_user }}"
+            mode: '0755'
+          loop:
+            - "{{ app_base }}"
+            - "{{ releases_dir }}"
+            - "{{ release_path }}"
+
+        - name: Copy application JAR
+          copy:
+            src: "{{ lookup('env','GITHUB_WORKSPACE') }}/artifacts/{{ jar_name }}"
+            dest: "{{ jar_path }}"
+            owner: "{{ app_user }}"
+            group: "{{ app_user }}"
+            mode: '0755'
+
+        - name: Update current symlink
+          file:
+            src: "{{ release_path }}"
+            dest: "{{ current_path }}"
+            state: link
+            force: yes
+
+        - name: Create systemd service file
+          copy:
+            dest: "/etc/systemd/system/{{ service_name }}.service"
+            content: |
+              [Unit]
+              Description=Simple Java HTTP App
+              After=network.target
+
+              [Service]
+              User={{ app_user }}
+              WorkingDirectory={{ current_path }}
+              ExecStart=/usr/bin/java -jar {{ current_path }}/{{ jar_name }}
+              Restart=always
+              RestartSec=5
+
+              [Install]
+              WantedBy=multi-user.target
+
+        - name: Reload systemd
+          command: systemctl daemon-reexec
+
+        - name: Restart application
+          systemd:
+            name: "{{ service_name }}"
+            state: restarted
+            enabled: yes
+
+        - name: Wait for port to be available
+          wait_for:
+            port: "{{ app_port }}"
+            delay: 5
+            timeout: 30
+
+        - name: HTTP health check
+          uri:
+            url: "http://localhost:{{ app_port }}/health"
+            status_code: 200
+            timeout: 5
+
+      rescue:
+
+        - name: Roll back to previous release
+          shell: |
+            PREV=$(ls -dt {{ releases_dir }}/* | sed -n '2p')
+            if [ -n "$PREV" ]; then
+              ln -sfn "$PREV" "{{ current_path }}"
+              systemctl restart {{ service_name }}
+            fi
+
+        - name: Fail deployment after rollback
+          fail:
+            msg: "Deployment failed and was rolled back"
+

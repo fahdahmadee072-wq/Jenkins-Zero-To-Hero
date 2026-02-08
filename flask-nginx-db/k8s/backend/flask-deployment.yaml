@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: flask
+  template:
+    metadata:
+      labels:
+        app: flask
+    spec:
+      containers:
+
+      # -------------------------
+      # MAIN FLASK APP CONTAINER
+      # -------------------------
+      - name: flask
+        image: fahd81/flask-nginx-app:v6
+        ports:
+        - containerPort: 5000
+
+        resources:
+          requests:
+            cpu: "100m"
+          limits:
+            cpu: "300m"
+
+        env:
+        # FROM CONFIGMAP
+        - name: FLASK_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: flask-config
+              key: FLASK_ENV
+
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: flask-config
+              key: DEBUG
+
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: flask-config
+              key: LOG_LEVEL
+
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: flask-config
+              key: DB_HOST
+
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: flask-config
+              key: DB_NAME
+
+        # FROM SECRET
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: POSTGRES_USER
+
+        - name: DB_PASS
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: POSTGRES_PASSWORD
+
+        - name: POSTGRES_DB
+          valueFrom:
+            secretKeyRef:
+              name: db-secret
+              key: POSTGRES_DB
+
+
+      # ---------------------------------------
+      # CPU STRESS CONTAINER (SIDE CAR FOR HPA)
+      # ---------------------------------------
+
