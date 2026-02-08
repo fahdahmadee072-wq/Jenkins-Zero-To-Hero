@@ -1,4 +1,4 @@
-name: Simple CI - Build and Push to ACR
+name: Full CI/CD - Build, Push & Deploy to AKS
 
 on:
   push:
@@ -6,29 +6,46 @@ on:
       - main
 
 jobs:
-  build-and-push:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-      - name: Login to Azure using Service Principal
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Azure Container Registry Login
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
-          username: ${{ secrets.ACR_NAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+    - name: Azure CLI - Login to ACR
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
 
-      - name: Build Docker Image
-        run: |
-          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest .
+    - name: Build Docker Image
+      run: |
+        docker build \
+          -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest \
+          ./flask-nginx-db/app
 
-      - name: Push Docker Image to ACR
-        run: |
-          docker push ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest
+
+    - name: Get AKS Credentials
+      run: |
+        az aks get-credentials \
+          --resource-group main-server_group_12222324 \
+          --name flask-nginx-app \
+          --overwrite-existing
+
+    - name: Deploy to AKS
+      run: |
+        kubectl apply -f ./flask-nginx-db/k8s/backend/
+        kubectl apply -f ./flask-nginx-db/k8s/database/
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods -n default
+        kubectl get svc -n default
+
