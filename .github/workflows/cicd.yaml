@@ -13,10 +13,12 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Login to Azure
+    - name: Login to Azure using OIDC
       uses: azure/login@v1
       with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
+        client-id: 8dd96137-8909-4e32-b84a-e55303946dc3
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
     - name: Azure CLI - Login to ACR
       run: |
