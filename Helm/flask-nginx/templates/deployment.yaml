@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "flask-nginx.fullname" . }}
+  labels:
+    {{- include "flask-nginx.labels" . | nindent 4 }}
+
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "flask-nginx.name" . }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ include "flask-nginx.name" . }}
+
+    spec:
+      containers:
+      - name: flask
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+          - containerPort: 5000
+        
+        env:
+        - name: FLASK_ENV
+          value: {{ .Values.env.FLASK_ENV }}
+
+        - name: LOG_LEVEL
+          value: {{ .Values.env.LOG_LEVEL }}
+
+        - name: DB_HOST
+          value: {{ .Values.env.DB_HOST }}
+
+        - name: DB_NAME
+          value: {{ .Values.env.DB_NAME }}
+
+        # Resources
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}

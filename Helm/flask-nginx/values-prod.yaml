@@ -1,0 +1,5 @@
+replicaCount: 4
+
+env:
+  FLASK_ENV: "production"
+  LOG_LEVEL: "info"

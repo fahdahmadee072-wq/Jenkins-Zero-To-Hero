@@ -1,0 +1,15 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: flask-app
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+        - name: flask-app
+          image: youracr.azurecr.io/flaskapp:stable
+          resources:
+            limits:
+              cpu: "1"
+              memory: "1Gi"
