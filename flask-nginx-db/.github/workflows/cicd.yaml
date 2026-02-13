@@ -1,0 +1,56 @@
+name: Full CI/CD - Build, Push & Deploy to AKS
+
+on:
+  push:
+    branches:
+      - main
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Login to Azure using OIDC
+      uses: azure/login@v1
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+
+    - name: Azure CLI - Login to ACR
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
+
+    - name: Build Docker Image
+      run: |
+        docker build \
+          -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest \
+          ./flask-nginx-db/app
+
+    - name: Push Docker Image
+      run: |
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest
+
+    - name: Get AKS Credentials
+      run: |
+        az aks get-credentials \
+          --resource-group main-server_group_12222324 \
+          --name flask-nginx-app \
+          --overwrite-existing
+
+    - name: Deploy to AKS
+      run: |
+        kubectl apply -f ./flask-nginx-db/k8s/backend/
+        kubectl apply -f ./flask-nginx-db/k8s/database/
+
+    - name: Verify Deployment
+      run: |
+        kubectl get pods -n default
+        kubectl get svc -n default
