@@ -1,19 +1,23 @@
 replicaCount: 2
 
 image:
-  repository: fahdacr.azurecr.io/flaskapp
-  tag: "latest"
+  repository: fahd81/flask-nginx-app
+  tag: "v6"
   pullPolicy: IfNotPresent
 
 service:
-  type: LoadBalancer
+  type: ClusterIP
   port: 80
+  targetPort: 5000
 
-env:
-  FLASK_ENV: "production"
-  LOG_LEVEL: "info"
-  DB_HOST: "fahd-postgres.postgres.database.azure.com"
-  DB_NAME: "flaskdb"
+ingress:
+  enabled: true
+  className: nginx
+  host: fahdtech.store
+  tls:
+    enabled: true
+    secretName: flask-tls
+    clusterIssuer: letsencrypt-production
 
 resources:
   requests:
@@ -21,3 +25,14 @@ resources:
   limits:
     cpu: "300m"
 
+env:
+  FLASK_ENV: "production"
+  DEBUG: "false"
+  LOG_LEVEL: "info"
+  DB_HOST: "fahd-postgres.postgres.database.azure.com"
+  DB_NAME: "flaskdb"
+
+secret:
+  POSTGRES_DB: sandbox
+  POSTGRES_USER: flaskuser@fahd-postgres
+  POSTGRES_PASSWORD: flaskpassword
