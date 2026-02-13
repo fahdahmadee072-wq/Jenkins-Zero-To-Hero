@@ -1,40 +1,52 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "flask-nginx.fullname" . }}
-  labels:
-    {{- include "flask-nginx.labels" . | nindent 4 }}
-
+  name: {{ include "flask-app.fullname" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "flask-nginx.name" . }}
-
+      app: {{ include "flask-app.name" . }}
   template:
     metadata:
       labels:
-        app: {{ include "flask-nginx.name" . }}
-
+        app: {{ include "flask-app.name" . }}
     spec:
       containers:
-      - name: flask
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        ports:
-          - containerPort: 5000
-        
-        env:
-        - name: FLASK_ENV
-          value: {{ .Values.env.FLASK_ENV }}
+        - name: flask
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 5000
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: FLASK_ENV
+              value: {{ .Values.env.FLASK_ENV | quote }}
+            - name: DEBUG
+              value: {{ .Values.env.DEBUG | quote }}
+            - name: LOG_LEVEL
+              value: {{ .Values.env.LOG_LEVEL | quote }}
+            - name: DB_HOST
+              value: {{ .Values.env.DB_HOST | quote }}
+            - name: DB_NAME
+              value: {{ .Values.env.DB_NAME | quote }}
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "flask-app.fullname" . }}-secret
+                  key: POSTGRES_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "flask-app.fullname" . }}-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "flask-app.fullname" . }}-secret
+                  key: POSTGRES_DB
 
-        - name: LOG_LEVEL
-          value: {{ .Values.env.LOG_LEVEL }}
-
-        - name: DB_HOST
-          value: {{ .Values.env.DB_HOST }}
-
-        - name: DB_NAME
           value: {{ .Values.env.DB_NAME }}
 
         # Resources
