@@ -2,7 +2,7 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "flask-app.fullname" . }}
+  name: {{ include "flask-nginx.fullname" . }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer }}
@@ -19,7 +19,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "flask-app.fullname" . }}
+                name: {{ include "flask-nginx.fullname" . }}
                 port:
                   number: {{ .Values.service.port }}
 {{- end }}

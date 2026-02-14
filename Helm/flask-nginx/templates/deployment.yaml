@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "flask-app.fullname" . }}
+  name: {{ include "flask-nginx.fullname" . }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: {{ include "flask-app.name" . }}
+      app: {{ include "flask-nginx.name" . }}
   template:
     metadata:
       labels:
-        app: {{ include "flask-app.name" . }}
+        app: {{ include "flask-nginx.name" . }}
     spec:
       containers:
         - name: flask
@@ -34,21 +34,20 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-app.fullname" . }}-secret
+                  name: {{ include "flask-nginx.fullname" . }}-secret
                   key: POSTGRES_USER
             - name: DB_PASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-app.fullname" . }}-secret
+                  name: {{ include "flask-nginx.fullname" . }}-secret
                   key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-app.fullname" . }}-secret
+                  name: {{ include "flask-nginx.fullname" . }}-secret
                   key: POSTGRES_DB
 
-          value: {{ .Values.env.DB_NAME }}
+          
 
-        # Resources
-        resources:
-          {{- toYaml .Values.resources | nindent 12 }}
+        
+        
