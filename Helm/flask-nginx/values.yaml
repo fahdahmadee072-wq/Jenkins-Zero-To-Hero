@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: fahd81/flask-nginx-app
-  tag: "doesnotexist"
+  tag: "doesnotexist1"
   pullPolicy: IfNotPresent
 
 service:
