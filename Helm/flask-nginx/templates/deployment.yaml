@@ -11,7 +11,7 @@ spec:
     metadata:
       labels:
         app: {{ include "flask-nginx.name" . }}
-    spec:
+     
       containers:
         - name: flask
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -46,8 +46,16 @@ spec:
                 secretKeyRef:
                   name: {{ include "flask-nginx.fullname" . }}-secret
                   key: POSTGRES_DB
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
 
-          
-
-        
-        
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
