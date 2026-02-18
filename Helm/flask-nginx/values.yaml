@@ -1,8 +1,8 @@
 replicaCount: 2
 
 image:
-  repository: fahd81/flask-nginx-app
-  tag: "v7"
+  repository: fahdacr.azurecr.io/flaskapp
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 service:
