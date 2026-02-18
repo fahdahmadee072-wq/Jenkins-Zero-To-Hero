@@ -11,7 +11,7 @@ spec:
     metadata:
       labels:
         app: {{ include "flask-nginx.name" . }}
-     
+    spec:  
       containers:
         - name: flask
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -19,7 +19,7 @@ spec:
           ports:
             - containerPort: 5000
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{ toYaml .Values.resources | nindent 12 }}
           env:
             - name: FLASK_ENV
               value: {{ .Values.env.FLASK_ENV | quote }}
