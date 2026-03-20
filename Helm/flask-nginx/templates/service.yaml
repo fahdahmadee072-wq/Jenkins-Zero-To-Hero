@@ -2,11 +2,27 @@ apiVersion: v1
 kind: Service
 metadata:
   name: {{ include "flask-nginx.fullname" . }}
+  labels:
+    app: {{ include "flask-nginx.name" . }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "5000"
 
 spec:
   type: {{ .Values.service.type }}
-  ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 5000
   selector:
     app: {{ include "flask-nginx.name" . }}
+
+  ports:
+    # Port for NGINX (user traffic)
+    - name: http
+      port: {{ .Values.service.port }}   # usually 80
+      targetPort: 80
+      protocol: TCP
+
+    # Port for Flask metrics
+    - name: metrics
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
