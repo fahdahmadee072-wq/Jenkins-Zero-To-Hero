@@ -2,3 +2,8 @@ flask
 gunicorn
 psycopg2-binary
 flask_sqlalchemy
+prometheus-flask-exporter
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-flask
+opentelemetry-exporter-otlp

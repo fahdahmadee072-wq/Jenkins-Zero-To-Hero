@@ -16,6 +16,18 @@ spec:
         - name: flask
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["gunicorn"]
+          args: 
+             - "--preload"
+             - "app:app"
+             - "--bind"
+             - "0.0.0.0:5000"
+             - "--workers"
+             - "2"
+             - "--access-logfile"
+             - "-"
+             - "--error-logfile"
+             - "-"
           ports:
             - containerPort: 5000
           resources:
@@ -31,6 +43,8 @@ spec:
               value: {{ .Values.env.DB_HOST | quote }}
             - name: DB_NAME
               value: {{ .Values.env.DB_NAME | quote }}
+            - name: OTEL_SERVICE_NAME
+              value: {{ .Values.env.OTEL_SERVICE_NAME }}
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
