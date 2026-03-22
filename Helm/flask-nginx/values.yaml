@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: fahd81/flask-nginx
-  tag: tracing
+  tag: secure
   pullPolicy: IfNotPresent
 
 service:
@@ -36,3 +36,8 @@ secret:
   POSTGRES_DB: sandbox
   POSTGRES_USER: flaskuser@fahd-postgres
   POSTGRES_PASSWORD: flaskpassword
+
+autoscaling:
+  enabled: false   # for now
+  minReplicas: 1
+  maxReplicas: 3
