@@ -46,6 +46,7 @@ jobs:
       run: |
         git config --global user.email "ci@github.com"
         git config --global user.name "github-actions"
+        git pull origin main  
         git add Helm/flask-nginx/values.yaml
         git commit -m "Update image tag to ${{ github.sha }}"
         git push
