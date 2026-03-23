@@ -38,17 +38,18 @@ jobs:
         docker push fahd81/flask-nginx:${{ github.sha }}
 
     # 🔥 GitOps Step
-    - name: Update Helm values.yaml
-      run: |
-        sed -i 's/tag:.*/tag: "${{ github.sha }}"/' Helm/flask-nginx/values.yaml
+  
+   - name: Commit and Push Changes
+     run: |
+       git config --global user.email "ci@github.com"
+       git config --global user.name "github-actions"
 
-    - name: Commit and Push Changes
-      run: |
-        git config --global user.email "ci@github.com"
-        git config --global user.name "github-actions"
-        git pull origin main  
-        git add Helm/flask-nginx/values.yaml
-        git commit -m "Update image tag to ${{ github.sha }}"
-        git push
+       git pull origin main   # ✅ FIRST
+
+       sed -i 's/tag:.*/tag: "${{ github.sha }}"/' Helm/flask-nginx/values.yaml  # ✅ THEN update
+
+       git add Helm/flask-nginx/values.yaml
+       git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
+       git push
 
  
