@@ -11,7 +11,10 @@ spec:
     metadata:
       labels:
         app: {{ include "flask-nginx.name" . }}
-    spec:  
+    spec:
+      securityContext:        👈 ADD HERE (pod level)
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
         - name: flask
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
