@@ -1,0 +1,195 @@
+---
+# Source: flask-nginx/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: test-release-flask-nginx-secret
+type: Opaque
+stringData:
+  POSTGRES_DB: "sandbox"
+  POSTGRES_USER: "flaskuser@fahd-postgres"
+  POSTGRES_PASSWORD: "flaskpassword"
+---
+# Source: flask-nginx/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-release-flask-nginx-config
+
+data:
+  FLASK_ENV: production
+  LOG_LEVEL: info
+  DB_HOST: fahd-postgres.postgres.database.azure.com
+  DB_NAME: flaskdb
+---
+# Source: flask-nginx/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-release-flask-nginx
+  labels:
+    app: flask-nginx
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "5000"
+
+spec:
+  type: ClusterIP
+  selector:
+    app: flask-nginx
+
+  ports:
+    # Port for NGINX (user traffic)
+    - name: http
+      port: 80   # usually 80
+      targetPort: 80
+      protocol: TCP
+
+    # Port for Flask metrics
+    - name: metrics
+      port: 5000
+      targetPort: 5000
+      protocol: TCP
+---
+# Source: flask-nginx/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-release-flask-nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: flask-nginx
+  template:
+    metadata:
+      labels:
+        app: flask-nginx
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: flask
+          image: "fahd81/flask-nginx:secure"
+          imagePullPolicy: IfNotPresent
+          command: ["gunicorn"]
+          args: 
+             - "--preload"
+             - "app:app"
+             - "--bind"
+             - "0.0.0.0:5000"
+             - "--workers"
+             - "2"
+             - "--access-logfile"
+             - "-"
+             - "--error-logfile"
+             - "-"
+          ports:
+            - containerPort: 5000
+          resources:
+            
+            limits:
+              cpu: 300m
+            requests:
+              cpu: 100m
+          env:
+            - name: FLASK_ENV
+              value: "production"
+            - name: DEBUG
+              value: "false"
+            - name: LOG_LEVEL
+              value: "info"
+            - name: DB_HOST
+              value: "fahd-postgres.postgres.database.azure.com"
+            - name: DB_NAME
+              value: "flaskdb"
+            - name: OTEL_SERVICE_NAME
+              value: flask-app
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: test-release-flask-nginx-secret
+                  key: POSTGRES_USER
+            - name: DB_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: test-release-flask-nginx-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: test-release-flask-nginx-secret
+                  key: POSTGRES_DB
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+# Source: flask-nginx/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-release-flask-nginx
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-production
+spec:
+  tls:
+    - hosts:
+        - fahdtech.store
+      secretName: flask-tls
+  rules:
+    - host: fahdtech.store
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: test-release-flask-nginx
+                port:
+                  number: 80
+---
+# Source: flask-nginx/templates/servicemonitor.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: test-release-flask-nginx-monitor
+  labels:
+    release: kps   # VERY IMPORTANT: must match your kube-prometheus-stack release name
+spec:
+  selector:
+    matchLabels:
+      app: flask-nginx
+  namespaceSelector:
+    matchNames:
+      - flask-app
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
