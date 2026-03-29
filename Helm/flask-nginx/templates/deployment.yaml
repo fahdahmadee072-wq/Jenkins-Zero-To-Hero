@@ -12,9 +12,11 @@ spec:
       labels:
         app: {{ include "flask-nginx.name" . }}
     spec:
-      securityContext:        👈 ADD HERE (pod level)
+      securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: flask
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -87,4 +89,4 @@ spec:
               mountPath: /tmp
       volumes:
         - name: tmp
-          emptyDir: {}    
+          emptyDir: {}
