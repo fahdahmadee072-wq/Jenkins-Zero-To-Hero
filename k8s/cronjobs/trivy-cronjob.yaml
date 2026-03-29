@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: trivy-k8s-scan
+  namespace: monitoring
+spec:
+  schedule: "0 */6 * * *"   # every 6 hours
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: trivy-sa
+          restartPolicy: Never
+
+          initContainers:
+            - name: cleanup
+              image: bitnami/kubectl:latest
+              command:
+                - sh
+                - -c
+                - |
+                  kubectl delete namespace trivy-temp --ignore-not-found=true
+
+
+          containers:
+            - name: trivy
+              image: aquasec/trivy:0.50.0
+              args:
+                - k8s
+                - cluster
+                - --report
+                - summary
+                - --timeout
+                - 15m
+                - --disable-node-collector 
