@@ -1,12 +1,12 @@
-name: Full CI/CD - Build, Push & Deploy to AKS
+name: CI with Trivy + GitOps
 
 on:
   push:
     branches:
       - main
+
 permissions:
-  id-token: write
-  contents: read
+  contents: write
 
 jobs:
   deploy:
@@ -16,41 +16,53 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    - name: Login to Azure using OIDC
-      uses: azure/login@v1
+    # 🔥 ADD THIS (SonarQube Scan)
+    - name: SonarQube Scan
+      uses: sonarsource/sonarqube-scan-action@v2
       with:
-        client-id: ${{ secrets.AZURE_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        projectBaseDir: .
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
+    # 🔥 ADD THIS (Quality Gate)
+    - name: SonarQube Quality Gate
+      uses: sonarsource/sonarqube-quality-gate-action@v1
+      timeout-minutes: 5
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-    - name: Azure CLI - Login to ACR
-      run: |
-        az acr login --name ${{ secrets.ACR_NAME }}
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
 
     - name: Build Docker Image
       run: |
-        docker build \
-          -t ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest \
-          ./flask-nginx-db/app
+        docker build -t fahd81/flask-nginx:${{ github.sha }} ./app
+
+    - name: Run Trivy Scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'fahd81/flask-nginx:${{ github.sha }}'
+        severity: 'HIGH,CRITICAL'
+        exit-code: '0'
 
     - name: Push Docker Image
       run: |
-        docker push ${{ secrets.ACR_LOGIN_SERVER }}/flaskapp:latest
+        docker push fahd81/flask-nginx:${{ github.sha }}
 
-    - name: Get AKS Credentials
+    # 🔥 GitOps Step
+    - name: Commit and Push Changes
       run: |
-        az aks get-credentials \
-          --resource-group main-server_group_12222324 \
-          --name flask-nginx-app \
-          --overwrite-existing
+        git config --global user.email "ci@github.com"
+        git config --global user.name "github-actions"
 
-    - name: Deploy to AKS
-      run: |
-        kubectl apply -f ./flask-nginx-db/k8s/backend/
-        kubectl apply -f ./flask-nginx-db/k8s/database/
+        git pull origin main
 
-    - name: Verify Deployment
-      run: |
-        kubectl get pods -n default
-        kubectl get svc -n default
+        sed -i 's/tag:.*/tag: "${{ github.sha }}"/' Helm/flask-nginx/values.yaml
+
+        git add Helm/flask-nginx/values.yaml
+        git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
+        git push
