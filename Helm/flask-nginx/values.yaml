@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: fahd81/flask-nginx
-  tag: secure
+  tag: "47231134b11bab29611a7bb91272e05fbedf1b09"
   pullPolicy: IfNotPresent
 
 service:
