@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: runs-on: self-hosted
+    runs-on: self-hosted
 
     steps:
     - name: Checkout Code
