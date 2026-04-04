@@ -16,17 +16,25 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v3
 
-    
-    - name: SonarQube Scan
-      uses: sonarsource/sonarqube-scan-action@v2
-      with:
-        projectBaseDir: .
-      env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-      container:
-        options: --network host
-    
+    # 🔥 Install SonarScanner (LOCAL - no Docker issues)
+    - name: Install SonarScanner
+      run: |
+        sudo apt update
+        sudo apt install -y unzip wget
+        wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+        unzip sonar-scanner-cli-*.zip
+        mv sonar-scanner-* sonar-scanner
+
+    # 🔥 Run SonarQube Scan
+    - name: Run SonarQube Scan
+      run: |
+        ./sonar-scanner/bin/sonar-scanner \
+          -Dsonar.projectKey=my-app \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+
+    # 🔥 Optional: Remove this if still causes issue (we can debug later)
     - name: SonarQube Quality Gate
       uses: sonarsource/sonarqube-quality-gate-action@v1
       timeout-minutes: 5
