@@ -28,7 +28,7 @@ jobs:
     # 🔥 Run SonarQube Scan
     - name: Run SonarQube Scan
       run: |
-        ./sonar-scanner/bin/sonar-scanner \
+        sonar-scanner \
           -Dsonar.projectKey=my-app \
           -Dsonar.sources=. \
           -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
