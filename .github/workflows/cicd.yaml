@@ -50,11 +50,13 @@ jobs:
 
     # 🔍 Trivy Scan
     - name: Run Trivy Scan
-      uses: aquasecurity/trivy-action@master
+      uses: aquasecurity/trivy-action@0.28.0
+      timeout-minutes: 10
       with:
         image-ref: 'fahd81/flask-nginx:${{ github.sha }}'
         severity: 'HIGH,CRITICAL'
         exit-code: '0'
+        skip-db-update: true
 
     # 🚀 Push image AFTER scan (BuildKit)
     - name: Push Docker Image (BuildKit)
