@@ -1,20 +1,21 @@
 name: CI with Trivy + GitOps
-
 on:
   push:
     branches:
       - main
-
 permissions:
   contents: write
-
 jobs:
   deploy:
     runs-on: self-hosted
-
+    env:
+      ACTIONS_CACHE_URL: ""
+      ACTIONS_RUNTIME_TOKEN: ""
     steps:
     - name: Checkout Code
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
 
     # 🔥 Run SonarQube Scan
     - name: Run SonarQube Scan
@@ -31,6 +32,7 @@ jobs:
       timeout-minutes: 5
       env:
         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
     # 🔐 Docker Login
     - name: Login to DockerHub
@@ -56,9 +58,9 @@ jobs:
         image-ref: 'fahd81/flask-nginx:${{ github.sha }}'
         severity: 'HIGH,CRITICAL'
         exit-code: '0'
-        skip-db-update: true
+        cache: 'true'
 
-    # 🚀 Push image AFTER scan (BuildKit)
+    # 🚀 Push image AFTER scan
     - name: Push Docker Image (BuildKit)
       uses: docker/build-push-action@v5
       with:
@@ -71,11 +73,8 @@ jobs:
       run: |
         git config --global user.email "ci@github.com"
         git config --global user.name "github-actions"
-
         git pull origin main
-
         sed -i 's/tag:.*/tag: "${{ github.sha }}"/' Helm/flask-nginx/values.yaml
-
         git add Helm/flask-nginx/values.yaml
         git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
         git push
