@@ -53,17 +53,17 @@ spec:
             - name: DB_USER
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-nginx.fullname" . }}-secret
+                  name: flask-secret
                   key: POSTGRES_USER
             - name: DB_PASS
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-nginx.fullname" . }}-secret
+                  name: flask-secret
                   key: POSTGRES_PASSWORD
             - name: POSTGRES_DB
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "flask-nginx.fullname" . }}-secret
+                  name: flask-secret
                   key: POSTGRES_DB
           livenessProbe:
             httpGet:
