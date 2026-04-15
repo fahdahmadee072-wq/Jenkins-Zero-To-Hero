@@ -1,3 +1,4 @@
 .env
 __pycache__/
 pgdata/
+Helm/flask-nginx/rendered.yaml
