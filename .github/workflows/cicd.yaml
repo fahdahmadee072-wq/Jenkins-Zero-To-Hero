@@ -17,6 +17,20 @@ jobs:
       with:
         fetch-depth: 0
 
+    # 🔐 Fetch secrets from Vault
+    - name: Fetch secrets from Vault
+      run: |
+        export VAULT_ADDR="http://127.0.0.1:8200"
+        export VAULT_TOKEN="${{ secrets.VAULT_TOKEN }}"
+
+        vault kv get -format=json secret/ci > /tmp/vault.json
+
+        echo "SONAR_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.SONAR_TOKEN')" >> $GITHUB_ENV
+        echo "DOCKERHUB_USERNAME=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_USERNAME')" >> $GITHUB_ENV
+        echo "DOCKERHUB_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_TOKEN')" >> $GITHUB_ENV
+
+        rm /tmp/vault.json
+
     # 🔥 Run SonarQube Scan
     - name: Run SonarQube Scan
       run: |
@@ -24,22 +38,22 @@ jobs:
           -Dsonar.projectKey=my-app \
           -Dsonar.sources=. \
           -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
+          -Dsonar.login=${{ env.SONAR_TOKEN }}
 
     # 🔥 SonarQube Quality Gate
     - name: SonarQube Quality Gate
       uses: sonarsource/sonarqube-quality-gate-action@v1
       timeout-minutes: 5
       env:
-        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
 
     # 🔐 Docker Login
     - name: Login to DockerHub
       uses: docker/login-action@v3
       with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ env.DOCKERHUB_TOKEN }}
 
     # 🚀 Build image using BuildKit (NO PUSH YET)
     - name: Build Docker Image (BuildKit)
