@@ -1,0 +1,13 @@
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Ignore GHA runner files and historical commits"
+paths = [
+    "sonarqube/actions-runner",
+    "terraform-k8s/actions-runner",
+]
+commits = [
+    "e6780a4320f2319600db8ff4efff6bf98f2db4d5",
+    "04fa80c837c1e06a7ef0dcfc61553d2148d34e4b"
+]
