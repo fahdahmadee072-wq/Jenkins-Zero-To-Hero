@@ -64,7 +64,18 @@ jobs:
         load: true
         tags: fahd81/flask-nginx:${{ github.sha }}
 
-    # 🔍 Trivy Scan
+    - name: Get date for cache key
+      id: date
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+    
+    - name: Cache Trivy DB
+      uses: actions/cache@v4
+      with:
+        path: ${{ github.workspace }}/.cache/trivy
+        key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
+        restore-keys: |
+          trivy-db-${{ runner.os }}- 🔍 Trivy Scan
+    
     - name: Run Trivy Scan
       uses: aquasecurity/trivy-action@v0.35.0
       timeout-minutes: 10
