@@ -17,18 +17,19 @@ jobs:
       with:
         fetch-depth: 0
 
+    # 🔐 Scan for hardcoded secrets in code
+    - name: Gitleaks Secret Scan
+      run: gitleaks detect --source . --redact
+
     # 🔐 Fetch secrets from Vault
     - name: Fetch secrets from Vault
       run: |
         export VAULT_ADDR="http://127.0.0.1:8200"
         export VAULT_TOKEN="${{ secrets.VAULT_TOKEN }}"
-
         vault kv get -format=json secret/ci > /tmp/vault.json
-
         echo "SONAR_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.SONAR_TOKEN')" >> $GITHUB_ENV
         echo "DOCKERHUB_USERNAME=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_USERNAME')" >> $GITHUB_ENV
         echo "DOCKERHUB_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_TOKEN')" >> $GITHUB_ENV
-
         rm /tmp/vault.json
 
     # 🔥 Run SonarQube Scan
@@ -55,6 +56,10 @@ jobs:
         username: ${{ env.DOCKERHUB_USERNAME }}
         password: ${{ env.DOCKERHUB_TOKEN }}
 
+    # 🐳 Lint Dockerfile
+    - name: Lint Dockerfile
+      run: hadolint app/Dockerfile
+
     # 🚀 Build image using BuildKit (NO PUSH YET)
     - name: Build Docker Image (BuildKit)
       uses: docker/build-push-action@v5
@@ -64,18 +69,7 @@ jobs:
         load: true
         tags: fahd81/flask-nginx:${{ github.sha }}
 
-    - name: Get date for cache key
-      id: date
-      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-    
-    - name: Cache Trivy DB
-      uses: actions/cache@v4
-      with:
-        path: ${{ github.workspace }}/.cache/trivy
-        key: trivy-db-${{ runner.os }}-${{ steps.date.outputs.date }}
-        restore-keys: |
-          trivy-db-${{ runner.os }}- 🔍 Trivy Scan
-    
+    # 🔍 Trivy Scan
     - name: Run Trivy Scan
       uses: aquasecurity/trivy-action@v0.35.0
       timeout-minutes: 10
@@ -103,3 +97,7 @@ jobs:
         git add Helm/flask-nginx/values.yaml
         git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
         git push
+
+    # ⎈ Validate Helm Chart
+    - name: Helm Lint
+      run: helm lint Helm/flask-nginx
