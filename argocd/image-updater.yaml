@@ -1,0 +1,23 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: flask-app
+  namespace: argocd
+spec:
+  applicationRefs:
+    - namePattern: flask-app
+      commonUpdateSettings:
+        updateStrategy: newest-build
+        allowTags: "regexp:^[a-f0-9]{7,40}$"
+      images:
+        - alias: flask
+          imageName: fahd81/flask-nginx
+          manifestTargets:
+            helm:
+              tag: image.tag
+      writeBackConfig:
+        method: git
+        gitConfig:
+          repository: https://github.com/fahdahmadee072-wq/Jenkins-Zero-To-Hero
+          branch: main
+          writeBackTarget: Helm/flask-nginx/values.yaml

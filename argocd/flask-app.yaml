@@ -3,22 +3,24 @@ kind: Application
 metadata:
   name: flask-app
   namespace: argocd
-
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: flask=fahd81/flask-nginx
+    argocd-image-updater.argoproj.io/flask.update-strategy: latest
+    argocd-image-updater.argoproj.io/flask.allow-tags: regexp:^[a-f0-9]{7,40}$
+    argocd-image-updater.argoproj.io/flask.helm.image-name: image.repository
+    argocd-image-updater.argoproj.io/flask.helm.image-tag: image.tag
 spec:
   project: default
-
   source:
     repoURL: https://github.com/fahdahmadee072-wq/Jenkins-Zero-To-Hero
     targetRevision: main
     path: Helm/flask-nginx
-
   destination:
     server: https://kubernetes.default.svc
     namespace: flask-app
-
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true 
+    - CreateNamespace=true
