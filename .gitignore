@@ -2,3 +2,8 @@
 __pycache__/
 pgdata/
 Helm/flask-nginx/rendered.yaml
+sonarqube/actions-runner/
+terraform-k8s/actions-runner/
+terraform-k8s/.terraform/
+.local/
+*.tar.gz
