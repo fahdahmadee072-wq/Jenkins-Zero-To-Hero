@@ -1,5 +1,6 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from prometheus_flask_exporter import PrometheusMetrics
 import os
 
 # ----------------------------------
@@ -8,13 +9,15 @@ import os
 DEBUG = os.getenv("DEBUG", "false") == "true"
 FLASK_ENV = os.getenv("FLASK_ENV", "production")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "info")
-
 print("🎯 Flask Environment:", FLASK_ENV)
 print("🎯 Debug Mode:", DEBUG)
 print("🎯 Log Level:", LOG_LEVEL)
 
 # Flask App Init
 app = Flask(__name__)
+
+# Prometheus metrics
+metrics = PrometheusMetrics(app)
 
 # ----------------------------------
 # DB variables
@@ -53,11 +56,7 @@ def home():
 @app.route("/health")
 def health():
     try:
-        # Simple DB check using SQLAlchemy
         db.session.execute("SELECT 1")
         return "Healthy", 200
     except Exception as e:
         return f"Unhealthy: {str(e)}", 500
-# developer change v2
-# developer change v3
-# developer change v4
