@@ -87,17 +87,6 @@ jobs:
         push: true
         tags: fahd81/flask-nginx:${{ github.sha }}
 
-    # 🔄 GitOps Step
-    - name: Commit and Push Changes
-      run: |
-        git config --global user.email "ci@github.com"
-        git config --global user.name "github-actions"
-        git pull origin main
-        sed -i 's/tag:.*/tag: "${{ github.sha }}"/' Helm/flask-nginx/values.yaml
-        git add Helm/flask-nginx/values.yaml
-        git commit -m "Update image tag to ${{ github.sha }}" || echo "No changes"
-        git push
-
     # ⎈ Validate Helm Chart
     - name: Helm Lint
       run: helm lint Helm/flask-nginx
