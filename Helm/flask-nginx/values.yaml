@@ -1,15 +1,12 @@
 replicaCount: 2
-
 image:
   repository: fahd81/flask-nginx
-  tag: "e20b9736df8e310eb578e46ec1e74dfa367545a6"
+  tag: "d910c0de061f0dab960c33cf7c8ecff84b0d86a5"
   pullPolicy: IfNotPresent
-
 service:
   type: ClusterIP
   port: 80
   targetPort: 5000
-
 ingress:
   enabled: true
   className: nginx
@@ -18,13 +15,11 @@ ingress:
     enabled: true
     secretName: flask-tls
     clusterIssuer: letsencrypt-production
-
 resources:
   requests:
     cpu: "100m"
   limits:
     cpu: "300m"
-
 env:
   FLASK_ENV: "production"
   DEBUG: "false"
@@ -32,8 +27,7 @@ env:
   DB_HOST: "fahd-postgres.postgres.database.azure.com"
   DB_NAME: "flaskdb"
   OTEL_SERVICE_NAME: "flask-app"
-
 autoscaling:
-  enabled: false   # for now
+  enabled: false # for now
   minReplicas: 1
   maxReplicas: 3
