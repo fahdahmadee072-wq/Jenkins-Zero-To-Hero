@@ -1,6 +1,9 @@
 grafana:
   enabled: true
-  adminPassword: "admin123"
+  admin:
+    existingSecret: grafana-admin-secret
+    userKey: admin-user
+    passwordKey: admin-password
   sidecar:
     dashboards:
       enabled: true
@@ -27,3 +30,4 @@ nodeExporter:
 
 kubeStateMetrics:
   enabled: true
+
