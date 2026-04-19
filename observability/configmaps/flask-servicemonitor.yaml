@@ -13,6 +13,6 @@ spec:
     matchLabels:
       app: flask-nginx
   endpoints:
-    - port: http
+    - port: metrics
       path: /metrics
       interval: 15s
