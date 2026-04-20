@@ -53,4 +53,4 @@ spec:
             severity: warning
           annotations:
             summary: "Flask pod restarting too often"
-            description: "Pod restart count exceeded 5 in flask-app namespace"
+            description: "Pod restarts count exceeded 5 in flask-app namespace"
