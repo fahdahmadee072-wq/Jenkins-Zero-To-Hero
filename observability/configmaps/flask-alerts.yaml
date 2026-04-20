@@ -1,0 +1,56 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: flask-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  groups:
+    - name: flask.performance
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(flask_http_request_total{status=~"5.."}[5m]))
+            /
+            sum(rate(flask_http_request_total[5m])) * 100 > 5
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "High error rate on Flask app"
+            description: "Error rate is above 5% for more than 2 minutes"
+
+        - alert: HighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum(rate(flask_http_request_duration_seconds_bucket[5m])) by (le)
+            ) > 0.5
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "High latency on Flask app"
+            description: "P95 latency is above 500ms for more than 5 minutes"
+
+    - name: flask.availability
+      rules:
+        - alert: PodDown
+          expr: |
+            count(kube_pod_status_ready{namespace="flask-app", condition="true"}) < 2
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Flask pod is down"
+            description: "Less than 2 pods are ready in flask-app namespace"
+
+        - alert: PodRestarting
+          expr: |
+            sum(kube_pod_container_status_restarts_total{namespace="flask-app"}) > 5
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Flask pod restarting too often"
+            description: "Pod restart count exceeded 5 in flask-app namespace"
