@@ -24,14 +24,6 @@ prometheus:
 
 alertmanager:
   enabled: true
-
-nodeExporter:
-  enabled: true
-
-kubeStateMetrics:
-  enabled: true
-
-alertmanager:
   alertmanagerSpec:
     secrets:
       - alertmanager-slack-secret
@@ -54,3 +46,9 @@ alertmanager:
             send_resolved: true
             title: '{{ .GroupLabels.alertname }}'
             text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+
+nodeExporter:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
