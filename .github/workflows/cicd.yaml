@@ -93,3 +93,41 @@ jobs:
     # ⎈ Validate Helm Chart
     - name: Helm Lint
       run: helm lint Helm/flask-nginx
+
+    - name: Notify Slack - Success
+      if: success()
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "✅ *CI Pipeline Passed*",
+            "attachments": [{
+              "color": "good",
+              "fields": [
+                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
+                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"title": "Author", "value": "${{ github.actor }}", "short": true}
+              ]
+            }]
+          }'
+
+    # ❌ Failure notification
+    - name: Notify Slack - Failure
+      if: failure()
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "❌ *CI Pipeline Failed*",
+            "attachments": [{
+              "color": "danger",
+              "fields": [
+                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
+                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"title": "Author", "value": "${{ github.actor }}", "short": true},
+                {"title": "Action URL", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+              ]
+            }]
+          }'
