@@ -1,7 +1,7 @@
 replicaCount: 2
 image:
   repository: fahd81/flask-nginx
-  tag: "d618f9d3ec02b038a61554e34d7f4a4f66a8d5d0"
+  tag: "fc4a09f6229f2fd4b49f2fdbbd16a7e7c08adf39"
   pullPolicy: IfNotPresent
 service:
   type: ClusterIP
