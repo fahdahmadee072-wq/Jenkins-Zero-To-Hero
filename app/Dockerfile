@@ -37,3 +37,4 @@ ENV PORT=5000
 EXPOSE 5000
 
 CMD ["gunicorn", "--preload", "app:app", "--bind", "0.0.0.0:5000", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-"]
+INVALIDINSTRUCTION test
