@@ -107,7 +107,167 @@ jobs:
                 {"title": "Repo", "value": "${{ github.repository }}", "short": true},
                 {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
                 {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"titname: CI with Trivy + GitOps
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'Helm/**'  
+permissions:
+  contents: write
+jobs:
+  deploy:
+    runs-on: self-hosted
+    env:
+      ACTIONS_CACHE_URL: ""
+      ACTIONS_RUNTIME_TOKEN: ""
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Gitleaks Secret Scan
+      run: gitleaks detect --source . --redact
+
+    - name: Fetch secrets from Vault
+      run: |
+        export VAULT_ADDR="http://127.0.0.1:8200"
+        export VAULT_TOKEN="${{ secrets.VAULT_TOKEN }}"
+        vault kv get -format=json secret/ci > /tmp/vault.json
+        echo "SONAR_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.SONAR_TOKEN')" >> $GITHUB_ENV
+        echo "DOCKERHUB_USERNAME=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_USERNAME')" >> $GITHUB_ENV
+        echo "DOCKERHUB_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_TOKEN')" >> $GITHUB_ENV
+        rm /tmp/vault.json
+
+    - name: Run SonarQube Scan
+      run: |
+        sonar-scanner \
+          -Dsonar.projectKey=my-app \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ env.SONAR_TOKEN }}
+
+    - name: SonarQube Quality Gate
+      uses: sonarsource/sonarqube-quality-gate-action@v1
+      timeout-minutes: 5
+      env:
+        SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+
+    - name: Login to DockerHub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ env.DOCKERHUB_USERNAME }}
+        password: ${{ env.DOCKERHUB_TOKEN }}
+
+    - name: Lint Dockerfile
+      run: hadolint app/Dockerfile
+
+    - name: Build Docker Image (BuildKit)
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app
+        push: false
+        load: true
+        tags: fahd81/flask-nginx:${{ github.sha }}
+
+    - name: Run Trivy Scan
+      uses: aquasecurity/trivy-action@v0.35.0
+      timeout-minutes: 10
+      with:
+        image-ref: 'fahd81/flask-nginx:${{ github.sha }}'
+        severity: 'HIGH,CRITICAL'
+        exit-code: '0'
+        cache: 'true'
+
+    - name: Push Docker Image (BuildKit)
+      uses: docker/build-push-action@v5
+      with:
+        context: ./app
+        push: true
+        tags: fahd81/flask-nginx:${{ github.sha }}
+
+    - name: Helm Lint
+      run: helm lint Helm/flask-nginx
+
+    - name: Notify Slack - Success
+      if: success()
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "✅ *CI Pipeline Passed*",
+            "attachments": [{
+              "color": "good",
+              "fields": [
+                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
+                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
                 {"title": "Author", "value": "${{ github.actor }}", "short": true}
+              ]
+            }]
+          }'
+
+    - name: Notify Slack - Failure
+      if: failure()
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "❌ *CI Pipeline Failed*",
+            "attachments": [{
+              "color": "danger",
+              "fields": [
+                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
+                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"title": "Author", "value": "${{ github.actor }}", "short": true},
+                {"title": "Action URL", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
+              ]
+            }]
+          }'
+
+  deploy-staging:
+    runs-on: self-hosted
+    needs: deploy
+    steps:
+    - name: Notify Slack - Staging Deployed
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "🚀 *Deployed to Staging* - awaiting approval for prod",
+            "attachments": [{
+              "color": "warning",
+              "fields": [
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"title": "Author", "value": "${{ github.actor }}", "short": true}
+              ]
+            }]
+          }'
+
+  deploy-prod:
+    runs-on: self-hosted
+    needs: deploy-staging
+    environment: Production
+    steps:
+    - name: Notify Slack - Prod Deployed
+      run: |
+        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
+          -H 'Content-type: application/json' \
+          --data '{
+            "text": "✅ *Deployed to Production*",
+            "attachments": [{
+              "color": "good",
+              "fields": [
+                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
+                {"title": "Author", "value": "${{ github.actor }}", "short": true}
+              ]
+            }]
+          }'le": "Author", "value": "${{ github.actor }}", "short": true}
               ]
             }]
           }'
