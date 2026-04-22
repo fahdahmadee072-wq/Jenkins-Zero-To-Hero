@@ -5,7 +5,7 @@ metadata:
   namespace: argocd
 spec:
   applicationRefs:
-    - namePattern: flask-app
+    - namePattern: flask-app-prod
       commonUpdateSettings:
         updateStrategy: latest
         allowTags: "regexp:^[a-f0-9]{7,40}$"
