@@ -1,113 +1,5 @@
+cat > .github/workflows/cicd.yaml << 'ENDOFFILE'
 name: CI with Trivy + GitOps
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'app/**'
-      - 'Helm/**'  
-permissions:
-  contents: write
-jobs:
-  deploy:
-    runs-on: self-hosted
-    env:
-      ACTIONS_CACHE_URL: ""
-      ACTIONS_RUNTIME_TOKEN: ""
-    steps:
-    - name: Checkout Code
-      uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-
-    # 🔐 Scan for hardcoded secrets in code
-    - name: Gitleaks Secret Scan
-      run: gitleaks detect --source . --redact
-
-    # 🔐 Fetch secrets from Vault
-    - name: Fetch secrets from Vault
-      run: |
-        export VAULT_ADDR="http://127.0.0.1:8200"
-        export VAULT_TOKEN="${{ secrets.VAULT_TOKEN }}"
-        vault kv get -format=json secret/ci > /tmp/vault.json
-        echo "SONAR_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.SONAR_TOKEN')" >> $GITHUB_ENV
-        echo "DOCKERHUB_USERNAME=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_USERNAME')" >> $GITHUB_ENV
-        echo "DOCKERHUB_TOKEN=$(cat /tmp/vault.json | jq -r '.data.data.DOCKERHUB_TOKEN')" >> $GITHUB_ENV
-        rm /tmp/vault.json
-
-    # 🔥 Run SonarQube Scan
-    - name: Run SonarQube Scan
-      run: |
-        sonar-scanner \
-          -Dsonar.projectKey=my-app \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-          -Dsonar.login=${{ env.SONAR_TOKEN }}
-
-    # 🔥 SonarQube Quality Gate
-    - name: SonarQube Quality Gate
-      uses: sonarsource/sonarqube-quality-gate-action@v1
-      timeout-minutes: 5
-      env:
-        SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
-        SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-
-    # 🔐 Docker Login
-    - name: Login to DockerHub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ env.DOCKERHUB_USERNAME }}
-        password: ${{ env.DOCKERHUB_TOKEN }}
-
-    # 🐳 Lint Dockerfile
-    - name: Lint Dockerfile
-      run: hadolint app/Dockerfile
-
-    # 🚀 Build image using BuildKit (NO PUSH YET)
-    - name: Build Docker Image (BuildKit)
-      uses: docker/build-push-action@v5
-      with:
-        context: ./app
-        push: false
-        load: true
-        tags: fahd81/flask-nginx:${{ github.sha }}
-
-    # 🔍 Trivy Scan
-    - name: Run Trivy Scan
-      uses: aquasecurity/trivy-action@v0.35.0
-      timeout-minutes: 10
-      with:
-        image-ref: 'fahd81/flask-nginx:${{ github.sha }}'
-        severity: 'HIGH,CRITICAL'
-        exit-code: '0'
-        cache: 'true'
-
-    # 🚀 Push image AFTER scan
-    - name: Push Docker Image (BuildKit)
-      uses: docker/build-push-action@v5
-      with:
-        context: ./app
-        push: true
-        tags: fahd81/flask-nginx:${{ github.sha }}
-
-    # ⎈ Validate Helm Chart
-    - name: Helm Lint
-      run: helm lint Helm/flask-nginx
-
-    - name: Notify Slack - Success
-      if: success()
-      run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H 'Content-type: application/json' \
-          --data '{
-            "text": "✅ *CI Pipeline Passed*",
-            "attachments": [{
-              "color": "good",
-              "fields": [
-                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
-                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
-                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
-                {"titname: CI with Trivy + GitOps
 on:
   push:
     branches:
@@ -252,7 +144,7 @@ jobs:
   deploy-prod:
     runs-on: self-hosted
     needs: deploy-staging
-    environment: Production
+    environment: production
     steps:
     - name: Notify Slack - Prod Deployed
       run: |
@@ -267,27 +159,5 @@ jobs:
                 {"title": "Author", "value": "${{ github.actor }}", "short": true}
               ]
             }]
-          }'le": "Author", "value": "${{ github.actor }}", "short": true}
-              ]
-            }]
           }'
-
-    # ❌ Failure notification
-    - name: Notify Slack - Failure
-      if: failure()
-      run: |
-        curl -X POST ${{ secrets.SLACK_WEBHOOK_URL }} \
-          -H 'Content-type: application/json' \
-          --data '{
-            "text": "❌ *CI Pipeline Failed*",
-            "attachments": [{
-              "color": "danger",
-              "fields": [
-                {"title": "Repo", "value": "${{ github.repository }}", "short": true},
-                {"title": "Branch", "value": "${{ github.ref_name }}", "short": true},
-                {"title": "Commit", "value": "${{ github.sha }}", "short": false},
-                {"title": "Author", "value": "${{ github.actor }}", "short": true},
-                {"title": "Action URL", "value": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}", "short": false}
-              ]
-            }]
-          }'
+ENDOFFILE
