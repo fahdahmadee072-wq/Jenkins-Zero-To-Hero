@@ -1,5 +1,6 @@
 replicaCount: 1
-
 env:
   FLASK_ENV: "development"
   LOG_LEVEL: "debug"
+ingress:
+  host: staging.fahdtech.store
