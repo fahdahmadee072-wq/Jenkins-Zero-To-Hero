@@ -1,7 +1,4 @@
-kubectl apply -f image-updater.yaml
-git add image-updater.yaml
-git commit -m "feat: add image updater"
-git pushapiVersion: argoproj.io/v1alpha1
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
 kind: ImageUpdater
 metadata:
   name: image-updater
