@@ -1,11 +1,14 @@
-apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kubectl apply -f image-updater.yaml
+git add image-updater.yaml
+git commit -m "feat: add image updater"
+git pushapiVersion: argoproj.io/v1alpha1
 kind: ImageUpdater
 metadata:
-  name: flask-app
+  name: image-updater
   namespace: argocd
 spec:
   applicationRefs:
-    - namePattern: flask-app-prod
+    - namePattern: flask-app
       commonUpdateSettings:
         updateStrategy: latest
         allowTags: "regexp:^[a-f0-9]{7,40}$"
@@ -16,9 +19,9 @@ spec:
             helm:
               name: image.repository
               tag: image.tag
-      writeBackConfig:
-        method: git
-        gitConfig:
-          repository: https://github.com/fahdahmadee072-wq/Jenkins-Zero-To-Hero
-          branch: main
-          writeBackTarget: Helm/flask-nginx/values.yaml
+  writeBackConfig:
+    method: git
+    gitConfig:
+      repository: https://github.com/fahdahmadee072-wq/Jenkins-Zero-To-Hero.git
+      branch: main
+      writeBackTarget: Helm/flask-nginx/values.yaml
